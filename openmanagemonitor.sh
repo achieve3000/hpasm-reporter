@@ -85,7 +85,6 @@ PRINT_OK=0
 DomainEnd="~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 RETCODE="0"
 LENGHT="80"
-Logs_names=( esmlog alertlog cmdlog ) # useless for now
 
 warnings=0
 failures=0
@@ -125,12 +124,8 @@ EOF
 
 # This function is used to clear logs
 Log_Clear() {
-  # Usage: $0 called with the "logs names" as $@ (as a list), "logs names" could be any of the following : "esmlog" "alertlog" "cmdlog"
-  logs_array=( ${@} )
-  for logs in ${logs_array[@]} ; do
-    omconfig system ${logs} action=clear
-  done
-  exit 0
+  # Clear HP Integrated Management Log
+   hpasmcli -s "CLEAR IML"
 }
 
 #####################################
@@ -149,7 +144,7 @@ while getopts ":onphc:a:e:" Option ; do
     p ) Local_mode="1" && echo "-> Local mode is activated : all results will be printed on stdout" # Send $TmpFile to STDOUT
     ;;
     n ) Local_mode="2" ;; # Only print sum of warnings & failures
-    c ) Log_Clear "${OPTARG}"
+    c ) Log_Clear
     ;;
     h ) Usage && exit $E_OPTERROR
     ;;
