@@ -124,7 +124,8 @@ EOF
 # This function is used to clear logs
 Log_Clear() {
   # Clear HP Integrated Management Log
-   hpasmcli -s "CLEAR IML"
+  hpasmcli -s "SHOW IML" > /var/log/hpiml.archive_$(date +%Y-%m-%d)
+  hpasmcli -s "CLEAR IML"
 }
 
 #####################################
@@ -401,38 +402,23 @@ Storage_Chk() {
   return $RETCODE
 }
 
-# This checks logs contents
+# This checks Integrated Management Logs contents
 Log_Chk() {
-  # Usage: $0 called with the "log name" as $@ (as a list)
-  #+ Note :only the "esmlog" is checked by this function, as it the only relevant log for hardware components status
-  if [[ "${ChassisModel}" =~ 'R710' ]] ; then
-    DOMAIN="ESMLOG"
-    log="esmlog"
-  else
-    DOMAIN="ALERTLOG"
-    log="alertlog"
-  fi
+  DOMAIN="IML"
   PrintDomainStart ${DOMAIN}
 
-  while IFS=";" read Status ID Data_or_Date Description ; do
-    omconfig preferences cdvformat delimiter=semicolon &>/dev/null # Set the "semicolon" as the "cdv"
+  while IFS=":" read Status Type Description ; do
 
-    dataepochtime=`date -d "$Data_or_Date" +%s`
-d1=`date --date "Jan 1, 1970 00:00:00 +0000 + $d seconds"`
-    epochtime=`date +%s`
-    age=$((epochtime - dataepochtime))
-    if [ $age -le $ESMAGE ]; then
-#echo -e "Data: $Data_or_Date\nd: $d\nd1: $d1\n\n"
-
-      if [[ "${Status}" = 'Critical' ]] ; then
-        PrintFailure "${Description:0:24}... @ ${Data_or_Date#[[:upper:]][[:alpha:]][[:alpha:]][[:space:]]}" "${Status}" "1" && declare -r RETCODE="${Critical}" 2>/dev/null
-      elif [[ "${Status}" = 'Non-Critical' ]] ; then
-        PrintWarning "${Description:0:24}... @ ${Data_or_Date#[[:upper:]][[:alpha:]][[:alpha:]][[:space:]]}" "${Status}" "1" && RETCODE="${NonCritical}" 2>/dev/null
-      elif [[ "${Status}" = 'Ok' ]] ; then
-        PrintOk "${Description:0:24}... @ ${Data_or_Date#[[:upper:]][[:alpha:]][[:alpha:]][[:space:]]}" "${Status}" "1"
-      fi
+    if [[ "${Status}" = 'CRITICAL' ]] ; then
+      PrintFailure "${Description:0:24}... @ ${Data_or_Date#[[:upper:]][[:alpha:]][[:alpha:]][[:space:]]}" "${Status}" "1" && declare -r RETCODE="${Critical}" 2>/dev/null
+    elif [[ "${Status}" = 'CAUTION' ]] ; then
+      PrintWarning "${Description:0:24}... @ ${Data_or_Date#[[:upper:]][[:alpha:]][[:alpha:]][[:space:]]}" "${Status}" "1" && RETCODE="${NonCritical}" 2>/dev/null
+    elif [[ "${Status}" = 'INFO' ]] ; then
+      PrintOk "${Description:0:24}... @ ${Data_or_Date#[[:upper:]][[:alpha:]][[:alpha:]][[:space:]]}" "${Status}" "1"
     fi
-  done <<<"$(omreport system "${log}" -fmt cdv |tail -10 |grep -E "^(Ok|Non-Critical|Critical)" |tac)"
+  done <<<"$(hpasmcli -s "SHOW IML")"
+
+  Log_Clear
 
   PrintDomainEnd
   return $RETCODE
