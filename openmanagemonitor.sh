@@ -84,7 +84,6 @@ err=0
 PRINT_OK=0
 DomainEnd="~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 RETCODE="0"
-LENGHT="80"
 
 warnings=0
 failures=0
@@ -230,7 +229,7 @@ PrintOk() {
   Logs="${3}"
   if [[ "${Logs}" = "1" ]] ; then tab="-50" ; else tab="-25"; fi # If $0 is used to print a Log_Chk() result
                                                                 #+ then the "Logs" flag is active and the formatting is different
-  printf  -- "- %"${tab}"s --------------> [%s]\n" "[${Component:0:${LENGHT}}]" "$Status" >> ${TmpFile}
+  printf  -- "- %"${tab}"s --------------> [%s]\n" "[${Component}]" "$Status" >> ${TmpFile}
 }
 
 # Print the component name and infos : This is used for example if a component does not exists
@@ -240,7 +239,7 @@ PrintInfos() {
   Status="${2}"
   Logs="${3}"
   if [[ "${Logs}" = "1" ]] ; then tab="-50" ; else tab="-25"; fi
-  printf  -- "- %"${tab}"s --------------> [%s]\n" "[${Component:0:${LENGHT}}]" "$Status" >> ${TmpFile}
+  printf  -- "- %"${tab}"s --------------> [%s]\n" "[${Component}]" "$Status" >> ${TmpFile}
 }
 
 # Print a "[Non-Critical]" message with the component name
@@ -250,7 +249,7 @@ PrintWarning() {
   Status="${2}"
   Logs="${3}"
   if [[ "${Logs}" = "1" ]] ; then tab="-50" ; else tab="-25"; fi
-  printf  -- "- %"${tab}"s --------------> [%s]\n" "[${Component:0:${LENGHT}}]" "$Status" >> ${TmpFile}
+  printf  -- "- %"${tab}"s --------------> [%s]\n" "[${Component}]" "$Status" >> ${TmpFile}
   warnings=$((warnings + 1))
 }
 
@@ -261,8 +260,8 @@ PrintFailure() {
   Status="${2}"
   Logs="${3}"
   if [[ "${Logs}" = "1" ]] ; then tab="-50" ; else tab="-25"; fi
-  printf  -- "- %"${tab}"s --------------> [%s] <----------\n" "[${Component:0:${LENGHT}}]" "$Status" >> ${TmpFile}
-  printf  -- "- %"${tab}"s --------------> [%s] <----------\n" "[${Component:0:${LENGHT}}]" "$Status"
+  printf  -- "- %"${tab}"s --------------> [%s] <----------\n" "[${Component}]" "$Status" >> ${TmpFile}
+  printf  -- "- %"${tab}"s --------------> [%s] <----------\n" "[${Component}]" "$Status"
   failures=$((failures + 1))
 }
 
