@@ -495,9 +495,9 @@ fi
 # Cleaning before anything else
 rm -f ${TmpDir}/HardChk_EMAIL*
 
-# omreport command must be available
-if ! ( which omreport && which omconfig ) &>/dev/null ; then
-  echo "omreport command not found : please make sure you are on a server and omreport utility is installed, exiting ..." && exit $Fatal_Error
+# hpasmcli command must be available
+if ! ( which hpasmcli ) &>/dev/null ; then
+  echo "hpasmcli command not found : please make sure you are on a server and hpasmcli is installed, exiting ..." && exit $Fatal_Error
 fi
 
 # Set the trap command that will call the Cleaning function in any termination cases
