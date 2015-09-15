@@ -280,7 +280,7 @@ SystemInfo() {
   done <<<"$(hpasmcli -s "SHOW SERVER" awk '/^System/||/^Serial/')"
 
   # OS version :
-  os=$(cut -d " " -f -5 /et/redhat-release)
+  os=$(cut -d " " -f -5 /etc/redhat-release)
   release=$(cut -d " " -f 6- /etc/redhat-release)
   kernel=$(uname -r| cut -d \. -f -4)
   arch=$(uname -r| awk -F \. '{print "("$5")"}')
