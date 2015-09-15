@@ -272,25 +272,24 @@ SystemInfo() {
   PrintDomainStart ${DOMAIN}
 
   # Product Name + Serial Number :
-  for level2 in chassis ; do
-    for level3 in info ; do
-      while IFS=":" read Description data ; do
-        PrintInfos "${Description// }" "${data# }"
-        if [[ "${Description}" =~ "Chassis.*Model" ]] ; then
-        echo "${data# }"
-        fi
-      done <<<"$(omreport ${level2} ${level3} |grep -E "((^Chassis Model)|(Service Tag))")"
-    done
-  done
+  while IFS=":" read Description data ; do
+	  PrintInfos "${Description// }" "${data# }"
+	  if [[ "${Description}" =~ "System" || "Serial" ]] ; then
+		  echo "${data# }"
+ 	  fi
+  done <<<"$(hpasmcli -s "SHOW SERVER" awk '/^System/||/^Serial/')"
 
   # OS version :
-  for level2 in system ; do
-    for level3 in operatingsystem ; do
-      while IFS=":" read Description data ; do
-        PrintInfos "${Description// }" "${data# }"
-      done <<<"$(omreport ${level2} ${level3} |grep -E "^[^H].*[[:blank:]]:.*")"
-    done
-  done
+  os=$(cut -d " " -f -5 /et/redhat-release)
+  release=$(cut -d " " -f 6- /etc/redhat-release)
+  kernel=$(uname -r| cut -d \. -f -4)
+  arch=$(uname -r| awk -F \. '{print "("$5")"}')
+
+  PrintInfos "OperatingSystem" "${os}"
+  PrintInfos "OperatingSystemVersion" "${release} Kernel ${kernel} ${arch}"
+  PrintInfos "SystemTime" "$(date)"
+  PrintInfos "SystemBootupTime" "$(who -b|cut -d " " -f 13-)"
+
 }
 
 # Function to check "system" components (see omreport -? for more info about what are "system" components)
