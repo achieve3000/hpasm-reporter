@@ -133,7 +133,7 @@ Log_Clear() {
 #####################################
 
 # Process options analysis
-while getopts ":onphc:a:e:" Option ; do
+while getopts ":onphca:e:" Option ; do
 # Declaration initiale.
 # Le ":" apr s l'option 'c' montre qu'il y aura un argument associ  : $OPTARG
 # The ":" after s option 'c' shows that there will be associated argument: $ OPTARG
