@@ -277,7 +277,7 @@ SystemInfo() {
 	  if [[ "${Description}" =~ "System" || "Serial" ]] ; then
 		  echo "${data# }"
  	  fi
-  done <<<"$(hpasmcli -s "SHOW SERVER" awk '/^System/||/^Serial/')"
+  done <<<"$(hpasmcli -s "SHOW SERVER" | awk '/^System/||/^Serial/')"
 
   # OS version :
   os=$(cut -d " " -f -5 /etc/redhat-release)
