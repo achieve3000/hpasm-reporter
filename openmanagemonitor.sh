@@ -387,7 +387,7 @@ Bios_Chk() {
   PrintDomainStart ${DOMAIN}
 
   # Check if HyperThreading is enabled.
-  ht=S(hpasmcli -s "SHOW HT" | awk '/enabled/ {print $5}')
+  ht=$(hpasmcli -s "SHOW HT" | awk '/enabled/ {print $5}')
   if [[ $ht =~ "enabled" ]] ; then
     PrintInfos "HyperThreading" "enabled"
   else
