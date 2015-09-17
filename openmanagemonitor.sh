@@ -99,20 +99,18 @@ MAILHOST="localhost"
 # usage & examples
 Usage() {
   cat <<EOF
-Usage: $(basename $0) [-ph] [-c] [log_name]
+Usage: $(basename $0) [-phco] [-a] <IP>
 
 Options :
           -p : print output to stdout
           -h : print this message (help)
-          -c : clear <log_name> given as parameter, where <log_name> must be one (and ONLY one at a time!) of : $(echo "${Logs_names[@]}")
+          -c : clear IML given as parameter
           -a : Specify address(s) to send report to
           -o : Print OK/Not Ok depending on status, send mail only if not ok
-          -e : Oldest ESM log entry to report (in hours)
 
 Examples:
           1) To check one server hardware state and send the results to the administrator (currently $ADMIN) : "$(basename $0)"
           2) To check one server hardware state and print the results to stdout (screen) : "$(basename $0) -p"
-          3) To clear one server log : "$(basename $0) -c <log_name>"
 EOF
   exit $E_OPTERROR
 }
