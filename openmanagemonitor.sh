@@ -337,69 +337,27 @@ EOF
   return $RETCODE
 }
 
-# Function to check "storage" components (see omreport -? for more info about what are "storage" components)
+# Function to check "storage" components (see hpssacli for more info about what are "storage" components)
 Storage_Chk() {
   DOMAIN="STORAGE"
   PrintDomainStart ${DOMAIN}
 
-  # globalinfo => there is NO diagnosys with that s**t
-  # cachecade => there is NO such device for our system (R710 & PE2950)
-  # connector => This is for the level4 commands..
+  # Check status of Controller(s), Cache, and Battery
+  while IFS=": " read bin1 bin2 status ; do 
+    PrintOk "${bin1}" "${status}"
+  done <<<"$(hpssacli ctrl all show status | awk '/Controller/ || /Cache/ || /Battery/')"
 
-# ControllerIDs is a list which contains each controller IDs
-  ControllerIDs=(
-                  $(while read line; do
-                      read bin ContrID <<<"$(echo $line)"; echo "${ContrID#: }"
-                    done <<<"$(omreport storage controller |grep -E "^ID[[:space:]]+:[[:space:]]+[[:digit:]]{0,2}$")")
-                )
+  # Check status of logical drives
+  while IFS=", ()" read ldrive ldnum oparen size raid rlevel status cparen ; do
+    PrintOk "${ldrive} ${ldnum}" "${status}"
+  done <<<"$(hpssacli ctrl all show config | awk '/logicaldrive/')"
 
-  # Check status for each level_3 components
-  for level3 in controller vdisk enclosure battery ; do
-    count=0
-    while IFS=": " read bin1 Level3_Status ; do  # $bin1: Status (the word) & $Level3_Status: the actual status (Critical, Ok etc)
-      if [[ "${level3}" = "controller" ]] && [[ "${bin1} ${Level3_Status}" =~ '^No controllers found$' ]] ; then  # if the tested level_3 command is "controller" AND if it is equal to "^No controllers found$" then there must be no other devices.
-        PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status}" && break 2
-      fi
-        if [[ "${Level3_Status}" =~ 'Ok' ]] ; then
-          PrintOk "${level3}_${count}" "${Level3_Status}"
-        elif [[ "${Level3_Status}" =~ 'Non-Critical' ]] ; then
-          PrintWarning "${level3}_${count}" "${Level3_Status}" && RETCODE="${NonCritical}" 2>/dev/null
-        elif [[ "${Level3_Status}" =~ 'Critical' ]] ; then
-          PrintFailure "${level3}_${count}" "${Level3_Status}" && declare -r RETCODE="${Critical}"
-        elif [[ "${bin1} ${Level3_Status}" =~ '^No.*found$' ]] ; then
-          PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status}"
-        else
-          PrintInfos "${level3}_${count}" "No such device"
-        fi
-      [ "${level3}" != "battery" ] && ((count++))
-      # If battery, ignore noncritical errors since that is usually the battery cycling
-      # However, we still print the error, just don't count it
-      [ "${level3}" = "battery" ] && [ "${Level3_Status}" != "${NonCritical}" ] && ((count++))
-    done <<<"$(omreport storage ${level3} |grep -E "(Status[[:space:]]+:[[:space:]]+(Critical|Ok|Non-Critical))|(^No.*found$)")"
-  done
+  # Check status of physical drives
+  while IFS=", ()" read pdrive location oparen port box bay baynum type size status cparen ; do
+    PrintOk "${pdrive} ${location}" "${status}"
+  done <<<"$(hpssacli ctrl all show config | awk '/physicaldrive/')"
 
-  # Check status for each level_4 components
-  for level4_cmd in pdisk connector ; do
-    for Cont_IDs in "${ControllerIDs[@]}" ; do
-      count="0"
-      while IFS=": " read bin1 Level4_Status ; do
-        if [[ "${Level4_Status}" =~ 'Ok' ]] ; then
-          PrintOk "${level4_cmd}_${count}" "${Level4_Status}"
-        elif [[ "${Level4_Status}" =~ 'Non-Critical' ]] ; then
-          PrintWarning "${level4_cmd}_${count}" "${Level4_Status}" && RETCODE="${NonCritical}" 2>/dev/null
-        elif [[ "${Level4_Status}" =~ 'Critical' ]] ; then
-          PrintFailure "${level4_cmd}_${count}" "${Level4_Status}" && declare -r RETCODE="${Critical}"
-        elif [[ "${bin1} ${Level4_Status}" =~ '^No.*found$' ]] ; then
-          PrintInfos "${level4_cmd}_${count}" "${bin1} ${Level4_Status}"
-    else
-          PrintInfos "${level4}_${count}" "${bin1} ${Level4_Status// }"
-    fi
-        ((count++))
-      done <<<"$(omreport storage ${level4_cmd} 'controller='"${Cont_IDs}" |grep -E "(Status[[:space:]]+:[[:space:]]+(Critical|Ok|Non-Critical))|(^No.*found$)")"
-    done
-  done
   PrintDomainEnd
-  return $RETCODE
 }
 
 # This checks Integrated Management Logs contents
