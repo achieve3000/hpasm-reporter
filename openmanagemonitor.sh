@@ -292,23 +292,16 @@ SystemInfo() {
 
 }
 
-# Function to check "system" components (see omreport -? for more info about what are "system" components)
+# Function to check "system" components
 System_Chk() {
   DOMAIN="SYSTEM"
   PrintDomainStart ${DOMAIN}
-  # overall health status retrieving
-  while IFS=": " read Status Name ; do
-    if [[ "${Status}" =~ 'Ok' ]] ; then
-      PrintOk "${Name}" "${Status}"
-    elif [[ "${Status}" =~ 'Non-Critical' ]] ; then
-      PrintWarning "${Name}" "${Status}" && RETCODE="${NonCritical}" 2>/dev/null
-    elif [[ "${Status}" =~ 'Critical' ]] ; then
-      PrintFailure "${Name}" "${Status}" && declare -r RETCODE="${Critical}"
-    else
-    # This might be used when a device does not exist (such as batteries for PERC H200 controller), this print out an info but does NOT set the error code
+
+  # Retrieve health statuses from other component checks
+  # Should return Status of either 'Ok','Non-Critical', or 'Critical'
+
     PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status}"
-    fi
-  done <<<"$(omreport system |grep -E "^(Ok|Critical|Non-Critical)")"
+
   PrintDomainEnd
   return $RETCODE
 }
@@ -318,21 +311,30 @@ Chassis_Chk() {
   DOMAIN="CHASSIS"
   PrintDomainStart ${DOMAIN}
 
-  # launch the command that retrieve the chassis components status and append it to the EMAIL temp file
-  while IFS=": " read Status Name ; do
-    if [[ "${Status}" =~ 'Ok' ]] ; then
-      PrintOk "${Name}" "${Status}"
-    elif [[ "${Status}" =~ 'Non-Critical' ]] ; then
-      PrintWarning "${Name}" "${Status}" && RETCODE="${NonCritical}" 2>/dev/null
-    elif [[ "${Status}" =~ 'Critical' ]] ; then
-      PrintFailure "${Name}" "${Status}" && declare -r RETCODE="${Critical}"
-    else
-    PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status }"
-    fi
-  done <<EOF
-            $(omreport chassis |grep -E '^(Ok|Critical|Non-Critical)')
-EOF
+  while read fan location present_speed pcent_max redundant partner hotplug; do
+	  PrintInfos "Fan${fan}" "${present_speed}"
+  done <<<"$(hpasmcli -s "SHOW FANS" | awk '/SYSTEM/')"
 
+  while IFS=":" read line; do
+	  dimm_status=$(awk '{print $2}')
+	  PrintInfos "Memory" "${dimm_status}"
+  done <<<"$(hpasmcli -s "SHOW DIMM" | awk '/Status/')"
+
+  while IFS=":" read line; do
+	  power=$(awk '{print $2}')
+	  PrintInfos "Power Supplies" "${power}"
+  done <<<"$(hpasmcli -s "SHOW POWERSUPPLY" | awk '/Condition/')"
+
+  while IFS=":" read line; do
+	  cpu_status=$(awk '{print $2}')
+	  PrintInfos "Processors" "${cpu_status}"
+  done <<<"$(hpasmcli -s "SHOW SERVER" | awk '/Status/')"
+
+  power_draw=$(hpasmcli  -s "SHOW POWERMETER" | awk '/Reading/' | cut -d: -f2)
+  PrintInfos "Power" "${power_draw}"
+
+  # Placeholder:
+  # No code to display chassis TEMPERATURE; HP ASM provides explicit temps, not general 'OK', 'Non-critical', etc.
   PrintDomainEnd
   return $RETCODE
 }
@@ -430,30 +432,9 @@ Bios_Chk() {
   DOMAIN="BIOS"
   PrintDomainStart ${DOMAIN}
 
-  for level3 in pwrmanagement ; do
-    while IFS=":" read Name Status ; do
-      if [[ "${Status# }" =~ '^Selected$' ]] ; then
-        PrintOk "${Name// }" "${Status# }"                                            # The ${Name// } notation removes every "space" character
-      elif [[ "${Status# }" =~ '^Not Selected$' ]] ; then
-        #PrintFailure "${Name// }" "${Status# }" && declare -r RETCODE="${Critical}"   # The ${Status# } removes one leading "space" char
-        PrintInfos "${level3}" "${Name}" "${Status}"
-      else
-        PrintInfos "${level3}" "${Name}" "${Status}"
-      fi
-    done <<<"$(omreport chassis ${level3} "config=profile" |grep -E "^Maximum")"
-  done
-
-  for attribute in "HyperThreading" "Turbo Mode" ; do
-    while IFS=":" read Name Status ; do
-      if [[ "${Status# }" =~ '^Enabled$' ]] ; then
-        PrintOk "${attribute}" "${Status# }"
-      elif [[ "${Status# }" =~ '^Disabled$' ]] ; then
-        PrintFailure "${attribute}" "${Status# }" && declare -r RETCODE="${Critical}"
-      else
-        PrintInfos "${attribute}" "${Name}" "${Status}"
-      fi
-    done <<<"$(omreport chassis biossetup |grep -E "${attribute}")"
-  done
+  # Power Management policy is not reported by HP ASM, so unable to display this data
+  hpasmcli -s "SHOW HT" | grep 'is currently enabled' && PrintInfos "HyperThreading" ""
+  # Performance policy is not reported by HP ASM, so unable to display this data
 
   PrintDomainEnd
   return $RETCODE
