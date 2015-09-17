@@ -386,30 +386,13 @@ Bios_Chk() {
   DOMAIN="BIOS"
   PrintDomainStart ${DOMAIN}
 
-  for level3 in pwrmanagement ; do
-    while IFS=":" read Name Status ; do
-      if [[ "${Status# }" =~ '^Selected$' ]] ; then
-        PrintOk "${Name// }" "${Status# }"                                            # The ${Name// } notation removes every "space" character
-      elif [[ "${Status# }" =~ '^Not Selected$' ]] ; then
-        #PrintFailure "${Name// }" "${Status# }" && declare -r RETCODE="${Critical}"   # The ${Status# } removes one leading "space" char
-        PrintInfos "${level3}" "${Name}" "${Status}"
-      else
-        PrintInfos "${level3}" "${Name}" "${Status}"
-      fi
-    done <<<"$(omreport chassis ${level3} "config=profile" |grep -E "^Maximum")"
-  done
-
-  for attribute in "HyperThreading" "Turbo Mode" ; do
-    while IFS=":" read Name Status ; do
-      if [[ "${Status# }" =~ '^Enabled$' ]] ; then
-        PrintOk "${attribute}" "${Status# }"
-      elif [[ "${Status# }" =~ '^Disabled$' ]] ; then
-        PrintFailure "${attribute}" "${Status# }" && declare -r RETCODE="${Critical}"
-      else
-        PrintInfos "${attribute}" "${Name}" "${Status}"
-      fi
-    done <<<"$(omreport chassis biossetup |grep -E "${attribute}")"
-  done
+  # Check if HyperThreading is enabled.
+  ht=S(hpasmcli -s "SHOW HT" | awk '/enabled/ {print $5}')
+  if [[ $ht =~ "enabled" ]] ; then
+    PrintInfos "HyperThreading" "enabled"
+  else
+    PrintInfos "HyperThreading" "disabled"
+  fi
 
   PrintDomainEnd
   return $RETCODE
