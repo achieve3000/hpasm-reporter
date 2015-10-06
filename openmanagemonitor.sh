@@ -306,35 +306,45 @@ System_Chk() {
   return $RETCODE
 }
 
-# Function to check "chassis" components (see omreport -? for more info about what are "chassis" components)
+# Function to check "chassis" components (see hpasmcli -s "HELP SHOW" for more 
+# info about what are "chassis" components)
 Chassis_Chk() {
   DOMAIN="CHASSIS"
   PrintDomainStart ${DOMAIN}
 
   while read fan location present_speed pcent_max redundant partner hotplug; do
-	  PrintInfos "Fan${fan}" "${present_speed}"
+    if [[ "${speed}" != "NORMAL" ]] ; then
+	    PrintInfos "Fan${fan}" "Critical"
+    else
+	    PrintInfos "Fan${fan}" "Ok"
+    fi
   done <<<"$(hpasmcli -s "SHOW FANS" | awk '/SYSTEM/')"
 
-  while IFS=":" read line; do
-	  dimm_status=$(awk '{print $2}')
-	  PrintInfos "Memory" "${dimm_status}"
-  done <<<"$(hpasmcli -s "SHOW DIMM" | awk '/Status/')"
+  while IFS=":" read status; do
+	  ((counter++))
+	  PrintInfos "DIMM#${counter}" "${status}"
+  done <<<"$(hpasmcli -s "SHOW DIMM" | awk '/Status/ {print $2}')"
 
   while IFS=":" read line; do
 	  power=$(awk '{print $2}')
 	  PrintInfos "Power Supplies" "${power}"
   done <<<"$(hpasmcli -s "SHOW POWERSUPPLY" | awk '/Condition/')"
 
-  while IFS=":" read line; do
-	  cpu_status=$(awk '{print $2}')
-	  PrintInfos "Processors" "${cpu_status}"
-  done <<<"$(hpasmcli -s "SHOW SERVER" | awk '/Status/')"
+  while IFS=":" read status; do
+	  PrintInfos "Processors" "${status}"
+  done <<<"$(hpasmcli -s "SHOW SERVER" | awk '/Status/ {print $3}')"
 
-  power_draw=$(hpasmcli  -s "SHOW POWERMETER" | awk '/Reading/' | cut -d: -f2)
+  power_draw=$(hpasmcli  -s "SHOW POWERMETER" | awk '/Power Reading/ {print $4}')
   PrintInfos "Power" "${power_draw}"
 
-  # Placeholder:
-  # No code to display chassis TEMPERATURE; HP ASM provides explicit temps, not general 'OK', 'Non-critical', etc.
+  while IFS=" /" read sensor location ctemp ftemp cthres fthres; do
+    if [[ ${ctemp} != "-" && ${cthres} != "-" ]] ; then
+          PrintInfos "${location} ${sensor}" "Current Temp: ${ftemp} Threshold:          ${fthres}"
+    elif [[ $cthres = "-" ]] ; then
+          PrintInfos "${location} ${sensor}" "Current Temp: ${ftemp}"
+    fi
+  done <<<"$(hpasmcli -s "SHOW TEMP"|awk '/^#[0-9]/'|sed -e 's|I/O_ZONE|IO_ZONE|')"
+
   PrintDomainEnd
   return $RETCODE
 }
