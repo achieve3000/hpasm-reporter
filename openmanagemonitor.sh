@@ -290,46 +290,58 @@ SystemInfo() {
 
 }
 
-# Function to check "system" components (see omreport -? for more info about what are "system" components)
+# Function to check "system" components
 System_Chk() {
   DOMAIN="SYSTEM"
   PrintDomainStart ${DOMAIN}
-  # overall health status retrieving
-  while IFS=": " read Status Name ; do
-    if [[ "${Status}" =~ 'Ok' ]] ; then
-      PrintOk "${Name}" "${Status}"
-    elif [[ "${Status}" =~ 'Non-Critical' ]] ; then
-      PrintWarning "${Name}" "${Status}" && RETCODE="${NonCritical}" 2>/dev/null
-    elif [[ "${Status}" =~ 'Critical' ]] ; then
-      PrintFailure "${Name}" "${Status}" && declare -r RETCODE="${Critical}"
-    else
-    # This might be used when a device does not exist (such as batteries for PERC H200 controller), this print out an info but does NOT set the error code
+
+  # Retrieve health statuses from other component checks
+  # Should return Status of either 'Ok','Non-Critical', or 'Critical'
+
     PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status}"
-    fi
-  done <<<"$(omreport system |grep -E "^(Ok|Critical|Non-Critical)")"
+
   PrintDomainEnd
   return $RETCODE
 }
 
-# Function to check "chassis" components (see omreport -? for more info about what are "chassis" components)
+# Function to check "chassis" components (see hpasmcli -s "HELP SHOW" for more 
+# info about what are "chassis" components)
 Chassis_Chk() {
   DOMAIN="CHASSIS"
   PrintDomainStart ${DOMAIN}
 
-  # launch the command that retrieve the chassis components status and append it to the EMAIL temp file
-  while IFS=": " read Status Name ; do
-    if [[ "${Status}" =~ 'Ok' ]] ; then
-      PrintOk "${Name}" "${Status}"
-    elif [[ "${Status}" =~ 'Non-Critical' ]] ; then
-      PrintWarning "${Name}" "${Status}" && RETCODE="${NonCritical}" 2>/dev/null
-    elif [[ "${Status}" =~ 'Critical' ]] ; then
-      PrintFailure "${Name}" "${Status}" && declare -r RETCODE="${Critical}"
+  while read fan location present_speed pcent_max redundant partner hotplug; do
+    if [[ "${speed}" != "NORMAL" ]] ; then
+	    PrintInfos "Fan${fan}" "Critical"
     else
-    PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status }"
+	    PrintInfos "Fan${fan}" "Ok"
     fi
-  done <<EOF
-            $(omreport chassis |grep -E '^(Ok|Critical|Non-Critical)')
-EOF
+  done <<<"$(hpasmcli -s "SHOW FANS" | awk '/SYSTEM/')"
+
+  while IFS=":" read status; do
+	  ((counter++))
+	  PrintInfos "DIMM#${counter}" "${status}"
+  done <<<"$(hpasmcli -s "SHOW DIMM" | awk '/Status/ {print $2}')"
+
+  while IFS=":" read line; do
+	  power=$(awk '{print $2}')
+	  PrintInfos "Power Supplies" "${power}"
+  done <<<"$(hpasmcli -s "SHOW POWERSUPPLY" | awk '/Condition/')"
+
+  while IFS=":" read status; do
+	  PrintInfos "Processors" "${status}"
+  done <<<"$(hpasmcli -s "SHOW SERVER" | awk '/Status/ {print $3}')"
+
+  power_draw=$(hpasmcli  -s "SHOW POWERMETER" | awk '/Power Reading/ {print $4}')
+  PrintInfos "Power" "${power_draw}"
+
+  while IFS=" /" read sensor location ctemp ftemp cthres fthres; do
+    if [[ ${ctemp} != "-" && ${cthres} != "-" ]] ; then
+          PrintInfos "${location} ${sensor}" "Current Temp: ${ftemp} Threshold:          ${fthres}"
+    elif [[ $cthres = "-" ]] ; then
+          PrintInfos "${location} ${sensor}" "Current Temp: ${ftemp}"
+    fi
+  done <<<"$(hpasmcli -s "SHOW TEMP"|awk '/^#[0-9]/'|sed -e 's|I/O_ZONE|IO_ZONE|')"
 
   PrintDomainEnd
   return $RETCODE
