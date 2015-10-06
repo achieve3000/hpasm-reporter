@@ -292,27 +292,6 @@ SystemInfo() {
 
 }
 
-# Function to check "system" components (see omreport -? for more info about what are "system" components)
-System_Chk() {
-  DOMAIN="SYSTEM"
-  PrintDomainStart ${DOMAIN}
-  # overall health status retrieving
-  while IFS=": " read Status Name ; do
-    if [[ "${Status}" =~ 'Ok' ]] ; then
-      PrintOk "${Name}" "${Status}"
-    elif [[ "${Status}" =~ 'Non-Critical' ]] ; then
-      PrintWarning "${Name}" "${Status}" && RETCODE="${NonCritical}" 2>/dev/null
-    elif [[ "${Status}" =~ 'Critical' ]] ; then
-      PrintFailure "${Name}" "${Status}" && declare -r RETCODE="${Critical}"
-    else
-    # This might be used when a device does not exist (such as batteries for PERC H200 controller), this print out an info but does NOT set the error code
-    PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status}"
-    fi
-  done <<<"$(omreport system |grep -E "^(Ok|Critical|Non-Critical)")"
-  PrintDomainEnd
-  return $RETCODE
-}
-
 # Function to check "chassis" components (see omreport -? for more info about what are "chassis" components)
 Chassis_Chk() {
   DOMAIN="CHASSIS"
