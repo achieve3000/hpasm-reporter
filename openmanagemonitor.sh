@@ -290,22 +290,6 @@ SystemInfo() {
 
 }
 
-# Function to check "system" components
-System_Chk() {
-  DOMAIN="SYSTEM"
-  PrintDomainStart ${DOMAIN}
-
-  # Retrieve health statuses from other component checks
-  # Should return Status of either 'Ok','Non-Critical', or 'Critical'
-
-    PrintInfos "${level3}_${count}" "${bin1} ${Level3_Status}"
-
-  PrintDomainEnd
-  return $RETCODE
-}
-
-# Function to check "chassis" components (see hpasmcli -s "HELP SHOW" for more 
-# info about what are "chassis" components)
 Chassis_Chk() {
   DOMAIN="CHASSIS"
   PrintDomainStart ${DOMAIN}
