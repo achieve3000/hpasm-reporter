@@ -450,10 +450,6 @@ read ChassisModel <<< "$(SystemInfo)"
 
 # Start checking all status :
 
-## System
-System_Chk
-RETCODE="${?}"
-
 ## Chassis
 Chassis_Chk
 RETCODE="${?}"
